@@ -1,0 +1,6 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<manifest:manifest>
+ <manifest:file-entry manifest:full-path="BrOo_Extenso/" manifest:media-type="application/vnd.sun.star.basic-library"/>
+ <manifest:file-entry manifest:full-path="addons.xcu" manifest:media-type="application/vnd.sun.star.configuration-data"/>
+ <manifest:file-entry manifest:full-path="info/info_pt.txt" manifest:media-type="application/vnd.sun.star.package-bundle-description"/>
+</manifest:manifest>

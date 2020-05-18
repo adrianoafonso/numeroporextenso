@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="ValorExtenso" script:language="StarBasic">REM  *****  BASIC  *****
+&apos;__________________________________________________________________________________________
+&apos; Projeto: Programação do BrOffice.org
+&apos; Biblioteca: BrOo_Extenso_Writer
+&apos; Módulo: ValorExtenso
+&apos; Aplicativos: BrOo v2.0.x (Writer / Calc)
+&apos; Objetivo: conjunto de funções para escrever um valor por extenso
+&apos; Autores: Noelson Alves Duarte e Gustavo B. Pacheco (modelo inicial da IGU)
+&apos; Versão: 1.0 - em 05/07/2006
+&apos;__________________________________________________________________________________________
+&apos; CRÉDITOS:
+&apos;    &gt; Fernando Camboim do Prado Lima - autor da função NExtenso()
+&apos;      + informações no cabeçalho da função NExtensoStr()
+&apos;    &gt; Vitorio Furusho, pela sugestão da ferramenta
+&apos;__________________________________________________________________________________________
+&apos; LICENÇA: GPL
+&apos;__________________________________________________________________________________________
+&apos; ADVERTÊNCIA:
+&apos; USE POR SUA CONTA E RISCO
+&apos;__________________________________________________________________________________________
+&apos;
+OPTION EXPLICIT
+
+&apos; A FAZER: eliminar globais
+Private oDlgOpcoes as Variant
+Private txtValor As String
+Private bUnidade As Boolean
+Private bValor As Boolean
+Private bSimbolo As Boolean
+
+&apos; Define constante
+Const SIMBOLO_UNIDADE = &quot; R$ &quot;
+
+&apos; Definição das rotinas
+&apos;__________________________________________________________________________________________
+Sub ExecutarExtenso
+&apos;@ 
+&apos;@ objetivo: selecionar o aplicativo e chamar a macro
+&apos;@ parâmetros:
+&apos;@@@ nenhum
+&apos;@ dependências: 
+&apos;@@@ nenhuma
+&apos;@ retorna: nada
+&apos;@ 
+   &apos; Declara variáveis locais
+   Dim oDoc As Variant
+   &apos;
+   oDoc = thisComponent
+   If HasUnoInterfaces(oDoc, &quot;com.sun.star.frame.XModel&quot;) Then
+      If oDoc.supportsService(&quot;com.sun.star.text.TextDocument&quot;) Then
+         Extenso_Writer ( oDoc )
+      ElseIf oDoc.supportsService(&quot;com.sun.star.sheet.SpreadsheetDocument&quot;) Then
+         Extenso_Calc ( oDoc )
+      Else
+         msgBox &quot;Apenas para o Writer e o Calc!&quot;, 176, &quot;Valor Extenso: Erro&quot;
+      End If
+   Else
+      msgBox &quot;Nenhum documento ativo!&quot;, 176, &quot;Valor Extenso: Erro&quot;
+   End If
+End Sub
+
+&apos;__________________________________________________________________________________________
+Sub Extenso_Writer ( oDoc )
+&apos;@ 
+&apos;@ objetivo: escrever um valor numérico por extenso num documento do writer
+&apos;@ parâmetros:
+&apos;@@@ nenhum
+&apos;@ dependências: 
+&apos;@@@ caractereValido - cursorComValor - eliminaPontos - padDir - padEsq - NExtensoStr
+&apos;@ retorna: nada
+&apos;@ 
+   &apos; 
+   On Error Goto erro_Ext_Writer
+   &apos;
+   &apos; Declara variáveis locais
+   Dim oSel As Variant
+   Dim oTexto As Variant, curValor As Variant
+   Dim vVirgulas As Variant, sCarac As String
+   &apos;Dim txtValor As String, strExtenso As String
+   Dim strExtenso As String
+   Dim parteInt As String, parteDec As String
+   Dim nPto As Integer, nVir As Integer, i As Integer
+   &apos; flags da cx de dialogo
+   &apos;Dim bSimbolo As Boolean &apos; inserir simbolo antes do valor numerico ?
+   &apos;Dim bUnidade As Boolean &apos; inserir unid no valor extenso ?
+   &apos;Dim bValor As Boolean   &apos; inserir valor numérico
+   &apos; p/ defeito api
+   Dim bValorSel As Boolean
+   Dim cursorTemp As Variant
+   Dim oTxtParte As Variant
+   Dim eEnum, Enum2
+   &apos;
+   &apos; incializa variáveis globais
+   bUnidade = True
+   bValor = False
+   bSimbolo = False
+   txtValor = &quot;&quot;
+   &apos;
+   oSel = oDoc.getCurrentSelection()
+   If oSel.supportsService(&quot;com.sun.star.text.TextTableCursor&quot;) Then
+      msgBox &quot;Célula selecionada!&quot;, 176, &quot;Valor Extenso: Erro&quot;
+      Goto saidaWriter
+   End If
+   &apos;
+   If oSel.supportsService(&quot;com.sun.star.drawing.ShapeCollection&quot;) Then
+      &apos; A FAZER:
+      &apos; conforme o tipo de desenho, obter o valor da 
+      &apos; caixa de diálogo e inserir no final do texto
+      msgBox &quot;Objeto de desenho selecionado!&quot;, 176, &quot;Valor Extenso: Erro&quot;
+      Goto saidaWriter
+   End If   
+   &apos;
+   If oSel.getCount() &gt; 1 Then
+      msgBox &quot;Seleção múltipla!&quot;, 176, &quot;Valor Extenso: Erro&quot;
+      Goto saidaWriter
+   ElseIf Not IsEmpty(oSel(0).TextField) Then
+      msgBox &quot;Cursor sobre um campo!&quot;, 176, &quot;Valor Extenso: Erro&quot;
+      Goto saidaWriter
+   End If
+   &apos;
+   txtValor = Trim(oSel(0).getString())
+   oTexto = oSel(0).getText()
+   curValor = oTexto.createTextCursorByRange(oSel(0))
+   bValorSel = False 
+   If curValor.isCollapsed() Then
+      curValor = cursorComValor(curValor)
+      txtValor = curValor.getString()
+   Else
+      bValorSel = True
+   End If
+   &apos; trata um defeito na API (no início de um parágrafo numerado)
+   &apos; ============================================================
+   &apos; A FAZER: 
+   &apos;   - Testes em parágrafos com linhas numeradas
+   &apos;
+   cursorTemp = oTexto.createTextCursorByRange(curValor.getStart())
+   cursorTemp.collapseToStart()
+   If Trim(cursorTemp.NumberingStyleName) &lt;&gt; &quot;&quot; AND cursorTemp.isStartOfParagraph() Then
+      eEnum = curValor.createEnumeration()
+      While eEnum.hasMoreElements()
+         oTexto = eEnum.nextElement()
+         Enum2 = oTexto.createEnumeration()
+         While Enum2.hasMoreElements()
+            oTxtParte = Enum2.nextElement()
+         Wend
+         txtValor = oTxtParte.getString()
+      Wend
+   End If
+   &apos;
+   &apos; ============================================================
+   &apos;
+   If bValorSel Then
+      curValor.collapseToEnd()
+      oDoc.getCurrentController().select( curValor )
+   End If
+   &apos;
+   bUnidade = True
+   bValor = False
+   bSimbolo = False
+   txtValor = Trim(txtValor)
+   If (Len(txtValor) = 0) Then
+      &apos; 
+      Call subAbreDlgOpcoes
+      If txtValor = &quot;&quot; Then &apos; cancelou ?
+         Goto saidaWriter
+      End If      
+   End If
+   &apos;
+   Dim flagErro As Integer
+   flagErro = verificaValor (txtValor)
+   If flagErro &gt; 0 Then
+      exibeErro (flagErro)
+      Goto saidaWriter
+   End If
+   &apos;
+   &apos; tratar unidades de acordo com as opções do diálogo
+   &apos; talvez sejam incluídas outras unidades na cx de diálogo
+   &apos;
+   Dim Unidades() As String
+   If bUnidade Then
+      Unidades() = Array(&quot; euro&quot;, &quot; euros&quot;, &quot; cêntimos&quot;, &quot; cêntimos&quot;)
+   Else
+      Unidades() = Array(&quot;&quot;, &quot;&quot;, &quot;&quot;, &quot;&quot;)
+   End If
+   &apos;
+   strExtenso = NExtensoStr ( txtValor, Unidades() )
+   strExtenso = &quot; (&quot; &amp; strExtenso &amp; &quot;)&quot;
+   If bValor Then
+      strExtenso = txtValor &amp; strExtenso
+      If bSimbolo Then
+         strExtenso = SIMBOLO_UNIDADE &amp; strExtenso
+      End If
+   End If
+   curValor.getEnd().setString(strExtenso)
+   &apos;
+saidaWriter:
+   On Error Goto 0
+   Exit Sub
+
+erro_Ext_Writer:
+   msgBox &quot;Linha: &quot; &amp; Str(Erl) &amp; &quot;; &quot; &amp; Error$, 176, &quot;Valor Extenso: Erro&quot;
+   On Error Goto 0
+   &apos;
+End Sub
+
+&apos;__________________________________________________________________________________________
+Sub Extenso_Calc ( oDoc )
+&apos;@ 
+&apos;@ objetivo: escrever um valor numérico por extenso numa célula de planilha
+&apos;@ parâmetros:
+&apos;@@@ oDoc : documento do Calc
+&apos;@ dependências: 
+&apos;@@@ caractereValido - padDir - padEsq - NExtensoStr
+&apos;@ retorna: nada
+&apos;@ 
+   &apos;
+   On Error Goto erro_Ext_Calc
+
+   &apos; declara variáveis locais
+   &apos;Dim txtValor As String
+   &apos;Dim bUnidade As Boolean, bValor As Boolean
+   &apos;Dim bSimbolo As Boolean
+   Dim oPlan As Variant
+   Dim oCelula As Variant
+   Dim strExtenso As String
+
+   &apos; incializa globais
+   bUnidade = True
+   bValor = False
+   bSimbolo = False
+   txtValor = &quot;&quot;
+   &apos; ---------------
+   &apos; ativa o diálogo
+   &apos; ---------------
+   &apos;obterValor txtValor, bValor, bUnidade
+   Call subAbreDlgOpcoes
+   If txtValor = &quot;&quot; Then &apos; cancelou ?
+      Goto saidaCalc
+   End If
+   &apos; testa valor
+   &apos;
+   
+   &apos;bSimbolo = True
+   
+   &apos;
+   &apos; tratar unidades de acordo com as opções do diálogo
+   &apos; talvez sejam incluídas outras unidades na cx de diálogo
+   &apos;
+   &apos;
+   Dim flagErro As Integer
+   flagErro = verificaValor (txtValor)
+   If flagErro &gt; 0 Then
+      exibeErro (flagErro)
+      Goto saidaCalc
+   End If
+   &apos;
+   Dim Unidades() As String
+   If bUnidade Then
+      Unidades() = Array(&quot; euro&quot;, &quot; euros&quot;, &quot; cêntimo&quot;, &quot; cêntimos&quot;)
+   Else
+      Unidades() = Array(&quot;&quot;, &quot;&quot;, &quot;&quot;, &quot;&quot;)
+   End If
+   &apos;
+   strExtenso = NExtensoStr ( txtValor, Unidades() )
+   If bValor Then
+      strExtenso = txtValor &amp; &quot; (&quot; &amp; strExtenso &amp; &quot;)&quot;
+      If bSimbolo Then
+         strExtenso = SIMBOLO_UNIDADE &amp; strExtenso
+      End If
+   End If
+    
+   &apos; obter plan ativa
+   oPlan = oDoc.getCurrentController().getActiveSheet()
+   &apos; obter cel ativa
+   Dim aAdr
+   aAdr = GetFocusedCell3(oDoc) 
+   oCelula = oPlan.getCellByPosition( aAdr(1), aAdr(2) )
+   &apos;
+   &apos; escrever valor
+   oCelula.setFormula(strExtenso)
+   &apos;
+saidaCalc:
+   On Error Goto 0
+   Exit Sub
+
+erro_Ext_Calc:
+   msgBox &quot;Linha: &quot; &amp; Str(Erl) &amp; &quot;; &quot; &amp; Error$, 176, &quot;Valor Extenso: Erro&quot;
+   On Error Goto 0
+   &apos;
+End Sub
+&apos;
+&apos;=============================
+&apos;INICIO das rotinas do Gustavo
+&apos;=============================
+&apos;
+&apos;Modelo de implementacao do valor por extenso no BrOffice.org 2.0.x.
+&apos;Desenvolvido por Gustavo Pacheco em 21/06/2006
+&apos;
+&apos;Alterado por Noelson:
+&apos;  + ajuste no código para acomodar o diálogo ao addon
+&apos;
+&apos; evitar globais !!
+Sub subAbreDlgOpcoes &apos;( txtValor As String, bValor As Boolean, bUnidade As Boolean)
+  DialogLibraries.loadLibrary( &quot;BrOo_Extenso&quot; )  &apos;BrO
+  oDlgOpcoes = createUnoDialog(DialogLibraries.BrOo_Extenso.dlgOpcoes) &apos;BrO
+  oDlgOpcoes.Execute()
+End Sub
+
+
+Sub dlgBtnCancelar
+    txtValor = &quot;&quot;
+    oDlgOpcoes.endExecute() 
+End Sub
+
+&apos; evitar globais !!
+Sub dlgBtnOK &apos; ( txtValor As String, bValor As Boolean, bUnidade As Boolean)
+ 
+ txtValor = Trim(oDlgOpcoes.getControl(&quot;tbValor&quot;).Text)
+ if oDlgOpcoes.getControl(&quot;chkMoeda&quot;).State = 1 then
+    bUnidade = True
+ else
+    bUnidade = False
+ endif
+ 
+ if oDlgOpcoes.getControl(&quot;chkIncluirValor&quot;).State = 1 then
+     bValor = True
+     if oDlgOpcoes.getControl(&quot;chkMoeda&quot;).State = 1 then
+        bSimbolo = True
+     endif 
+ endif 
+   
+ &apos; humm, tipo btn OK não dispara event handler ??
+ oDlgOpcoes.endExecute()
+End Sub
+
+&apos; ============= FIM DO MÓDULO =============
+
+</script:module>

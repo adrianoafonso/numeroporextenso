@@ -1,0 +1,488 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE script:module PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "module.dtd">
+<script:module xmlns:script="http://openoffice.org/2000/script" script:name="modUtils" script:language="StarBasic">REM  *****  BASIC  *****
+&apos;__________________________________________________________________________________________
+&apos; Projeto: Programação do BrOffice.org
+&apos; Biblioteca: BrOo_Extenso_Writer
+&apos; Módulo: modUtils
+&apos; Aplicativos: BrOo v2.0.x (Writer / Calc)
+&apos; Objetivo: funções utilitárias para escrever um valor por extenso
+&apos; Autor: Noelson Alves Duarte
+&apos; Versão: 1.0 - em 06/07/2006
+&apos;__________________________________________________________________________________________
+&apos; CRÉDITOS:
+&apos;    Fernando Camboim do Prado Lima - autor da função NExtenso()
+&apos;    + informações no cabeçalho da função NExtensoStr()
+&apos;__________________________________________________________________________________________
+&apos; LICENÇA: GPL
+&apos;__________________________________________________________________________________________
+&apos; ADVERTÊNCIA:
+&apos; USE POR SUA CONTA E RISCO
+&apos;__________________________________________________________________________________________
+&apos;
+OPTION EXPLICIT
+
+&apos; Define constantes
+Const SEP_ORD = &quot;.&quot;  &apos; separador da ordem
+Const SEP_DEC = &quot;,&quot;  &apos; separador decimal
+Const CHR_ESP = &quot; &quot;  &apos; espaço
+Const TAM_MAX = 18   &apos; tamanho da cadeia para quatrilhões
+&apos;
+&apos;__________________________________________________________________________________________
+Function NExtensoStr( Valor As String, Unid() ) As String
+&apos;@ Objetivo: retornar o valor por extenso
+&apos;@ Autor: Fernando Camboim do Prado Lima
+&apos;@ Licensa : GPL
+&apos;@ Data: 03/09/02 
+&apos;@ parâmetros:
+&apos;@@@ Valor: cadeia de caracteres com o valor (exs: 1.253,21; 1253,21; 1253,2)
+&apos;@@@ Unid.: vetor de 4 elementos com unidade/subunidade (singular/plural)
+&apos;@ retorno: cadeia de caracteres com o valor por extenso
+&apos;@
+&apos;@ Alterada por: Noelson Alves Duarte
+&apos;@    Data: 29/06/2006
+&apos;@        + o nome original da função foi alterado de NExtenso para NExtensoStr
+&apos;@        + parâmetro como cadeia de caracteres, corrige uma
+&apos;@          limitação do tipo de dado double que retornava extensos
+&apos;@          errados para valores grandes.
+&apos;@    Data: 22/12/2003
+&apos;@        + ajustes na grafia do extenso
+&apos;@        + eliminação da função para o extenso dos centavos
+&apos;@
+&apos;__________________________________________________________________________________________
+
+  &apos; Declara variáveis locais
+  Dim StrValor As String, Negativo As Boolean
+  Dim Buf As String, Parcial As Integer
+  Dim Temp as string
+  Dim Posicao As Integer, Unidades
+  Dim Dezenas, Centenas, PotenciasSingular
+  Dim PotenciasPlural
+  &apos; variaveis acrescentadas
+  Dim i As Integer, j As Integer
+  Dim Grupo(1 To 7) As String
+  Dim ValorCentavos As Double
+  Dim vbNullString As String
+  Dim grupoInicial As Integer
+  Dim grupoFinal As Integer
+  Dim StrCentavos As String
+  Dim vTemp As Variant
+  &apos;
+  vbNullString = &quot;&quot;
+  Buf = &quot;&quot;
+  &apos; Negativo = (Valor &lt; 0)
+  &apos; Valor = Abs((Valor))
+  If Trim(Valor) &lt;&gt; &quot;&quot; Then
+    Unidades = Array(vbNullString, &quot;um&quot;, &quot;dois&quot;, &quot;três&quot;, &quot;quatro&quot;, &quot;cinco&quot;, &quot;seis&quot;, &quot;sete&quot;, &quot;oito&quot;, &quot;nove&quot;,  &quot;dez&quot;, &quot;onze&quot;, &quot;doze&quot;, &quot;treze&quot;, &quot;catorze&quot;, &quot;quinze&quot;, &quot;dezasseis&quot;, &quot;dezassete&quot;, &quot;dezoito&quot;, &quot;dezenove&quot;)
+    Dezenas = Array(vbNullString, vbNullString, &quot;vinte&quot;, &quot;trinta&quot;, &quot;quarenta&quot;, &quot;cinquenta&quot;, &quot;sessenta&quot;, &quot;setenta&quot;, &quot;oitenta&quot;, &quot;noventa&quot;)
+    Centenas = Array(vbNullString, &quot;cento&quot;, &quot;duzentos&quot;, &quot;trezentos&quot;, &quot;quatrocentos&quot;, &quot;quinhentos&quot;, &quot;seiscentos&quot;, &quot;setecentos&quot;, &quot;oitocentos&quot;, &quot;novecentos&quot;)
+    PotenciasSingular = Array(vbNullString, &quot; mil&quot;, &quot; milhão&quot;, &quot; bilhão&quot;, &quot; trilhão&quot;, &quot; quatrilhão&quot;)
+    PotenciasPlural = Array(vbNullString, &quot; mil&quot;, &quot; milhões&quot;, &quot; bilhões&quot;, &quot; trilhões&quot;, &quot; quatrilhões&quot;)
+    &apos;
+    &apos; ampliar para quintilhão, sextilhão, septilhão, octilhão, nonilhão ?
+    &apos;
+    i = 1
+    grupoInicial = 0
+    grupoFinal = 0
+    &apos;
+    vTemp = Split(Valor, SEP_DEC)
+    StrCentavos = padEsq(vTemp(1), &quot;0&quot;, 3)
+    StrValor = padEsq(vTemp(0), &quot;0&quot;, 18)
+    StrValor = StrValor &amp; strCentavos
+    &apos;
+    For Posicao = 1 To 21 Step 3
+      Buf = &quot;&quot;
+      Parcial = Val(Mid(StrValor, Posicao, 3))
+      If Parcial Then
+        If (grupoInicial = 0 And i &lt; 7) Then
+           grupoInicial = i
+        End If
+        If (i &lt; 7) Then
+           grupoFinal = i
+        End If
+        If Parcial = 1 Then
+          Buf = &quot;um&quot; &amp; PotenciasSingular((18 - Posicao) \ 3)
+        ElseIf Parcial = 100 Then
+          &apos; corrigido de PotenciasSingular para PotenciasPlural
+          Buf = &quot;cem&quot; &amp; PotenciasPlural((18 - Posicao) \ 3)
+        Else
+          Buf = Centenas(Parcial \ 100)
+          Parcial = Parcial Mod 100
+          If Parcial &lt;&gt; 0 And Buf &lt;&gt; vbNullString Then
+            Buf = Buf &amp; &quot; e &quot;
+          End If
+          If Parcial &lt; 20 Then
+            Buf = Buf &amp; Unidades(Parcial)
+          Else
+            Buf = Buf &amp; Dezenas(Parcial \ 10)
+            Parcial = Parcial Mod 10
+            If Parcial &lt;&gt; 0 And Buf &lt;&gt; vbNullString Then
+              Buf = Buf &amp; &quot; e &quot;
+            End If
+            Buf = Buf &amp; Unidades(Parcial)
+          End If
+          Buf = Buf &amp; PotenciasPlural((18 - Posicao) \ 3)
+        End If
+      End If
+      &apos;
+      Grupo(i) = Buf
+      i = i + 1
+      &apos;
+    Next
+    &apos;
+    &apos; Concatena os grupos
+    Buf = &quot;&quot;
+    If grupoInicial Then
+      Buf = Grupo(grupoInicial)
+      &apos; Exclui &quot;Um&quot; do milhar?
+      If (grupoInicial = 5 And Val(Mid(StrValor, 13, 3)) = 1) Then
+         Mid(Buf, 1, 3, &quot;&quot;)
+      End If
+      &apos;
+      For j=grupoInicial + 1 To grupoFinal-1
+        If Grupo(j) &lt;&gt; &quot;&quot; Then
+           Buf = Buf &amp; &quot;, &quot; &amp; Grupo(j)
+        End If
+      Next
+      &apos;
+      If grupoFinal &gt; grupoInicial Then
+         &apos;Concatena &quot;e&quot; ou &quot; &quot;
+         i = grupoFinal * 3 - 2
+         If ( Mid(StrValor, i, 1) = &quot;0&quot; Or Mid(StrValor, i+1, 2) = &quot;00&quot; ) Then
+            Buf = Buf &amp; &quot; e &quot;
+         Else
+            Buf = Buf &amp; CHR_ESP
+         End If
+         &apos;Concatena ultimo grupo
+         Buf = Buf &amp; Grupo(grupoFinal)
+      End If
+      &apos;
+      &apos;Concatena &quot;de&quot; se for o caso
+      If ( Val(Mid(StrValor, 13, 6)) = 0 ) Then
+         Buf = Buf &amp; &quot; de&quot;
+      End If
+      &apos;
+      &apos;Concatena moeda
+      If Int(Valor) = 1 Then
+        Buf = Buf &amp; Unid(0)
+      Else
+        Buf = Buf &amp; Unid(1)
+      End If
+    End If &apos; fim grupos 
+    &apos;
+    &apos; Concatena centavos
+    If Grupo(7) &lt;&gt; &quot;&quot; Then
+       If Buf &lt;&gt; &quot;&quot; Then
+         Buf = Buf &amp; &quot; e &quot;
+       End If
+       Buf = Buf &amp; Grupo(7)
+       If Val(StrCentavos) = 1 Then
+          Buf = Buf &amp; Unid(2)
+       Else
+          Buf = Buf &amp; Unid(3)
+       End If
+    End If
+    &apos;
+    &apos; Concatena &quot;menos&quot; ( é o caso ? )
+    &apos;If Negativo Then
+    &apos;  Buf = &quot;menos &quot; &amp; Buf
+    &apos;End If
+  End If
+&apos;
+  NExtensoStr = Buf
+&apos;  
+End Function
+
+&apos;__________________________________________________________________________________________
+Function caractereValido (umCaractere As String) As Boolean
+&apos;@
+&apos;@ objetivo: testar a validade de um caractere como parte do valor
+&apos;@ parâmetros:
+&apos;@@@ umCaractere: caractere a ser testado
+&apos;@ usa rotina: nenhuma
+&apos;@ retorna True se o caractere for válido, senão False
+&apos;@ 
+   &apos; Declara variáveis locais
+   Dim sValidos As String   &apos; lista de caracteres válidos
+   &apos;
+   sValidos = &quot;0123456789&quot; &amp; SEP_DEC &amp; SEP_ORD
+   &apos;
+   If InStr(sValidos, umCaractere) &gt; 0 Then
+      caractereValido = True
+   Else
+      caractereValido = False
+   End If
+End Function
+
+
+&apos;__________________________________________________________________________________________
+Function eliminaPontos( ByVal origem As String ) As String
+&apos;@
+&apos;@ objetivo: eliminar os pontos de uma cadeia
+&apos;@ parâmetros:
+&apos;@@@ origem: cadeia
+&apos;@ usa rotina: nenhuma
+&apos;@ retorna a cadeia sem os pontos
+&apos;@ 
+&apos;@ OBS.: por algum motivo que não identifiquei claramente, o código antigo retornava um caractere inválido 
+&apos;        dentro do Mid$ da versão anterior (2.0.2). Por causa desse erro, alterei o código para usar a função 
+&apos;        Split. 
+Dim strPartes() as String
+Dim strRes as String
+Dim i as integer
+      strRes =&quot;&quot;
+      strPartes() = Split(origem, SEP_ORD) 
+      for i = 0 to UBound(strPartes()) 
+      strRes = strRes &amp; strPartes(i)
+      next i
+      eliminaPontos = strRes
+End Function
+
+&apos;__________________________________________________________________________________________
+Function padDir (cadeia As String, carac As String, nTam As Integer ) As String
+&apos;@
+&apos;@ objetivo: preencher uma cadeia no lado direito
+&apos;@ parâmetros:
+&apos;@@@ cadeia: cadeia a ser preenchida
+&apos;@@@ carac.: caractere de preenchimento
+&apos;@@@ nTam..: tamanho final da cadeia
+&apos;@ 
+   If Len(cadeia) &lt; nTam Then
+      padDir = cadeia &amp; String(nTam - Len(cadeia), carac)
+   Else
+      padDir = cadeia
+   End If
+End Function
+
+&apos;__________________________________________________________________________________________
+Function padEsq (cadeia As String, carac As String, nTam As Integer ) As String
+&apos;@
+&apos;@ objetivo: preencher uma cadeia no lado esquerdo
+&apos;@ parâmetros:
+&apos;@@@ cadeia: cadeia a ser preenchida
+&apos;@@@ carac.: caractere de preenchimento
+&apos;@@@ nTam..: tamanho final da cadeia
+&apos;@ 
+   If Len(cadeia) &lt; nTam Then
+      padEsq = String(nTam - Len(cadeia), carac) &amp; cadeia
+   Else
+      padEsq = cadeia
+   End If
+End Function
+
+&apos;__________________________________________________________________________________________
+Function GetFocusedCell3(oDoc As Variant)
+&apos;@ 
+&apos;@ objetivo: retornar a célula com o foco
+&apos;@ autor: ms777 (colaborador do OOoForum: www.oooforum.org)
+&apos;@ data.: 21/04/2005
+&apos;@ 
+Dim as1, cell(2) As Long, sDum as String 
+   as1  = Split(oDoc.currentController.ViewData, &quot;;&quot;) 
+   cell(0) = CLng(as1(1)) 
+   sDum = as1(cell(0)+3) 
+   as1  = Split(sDum, &quot;/&quot;) 
+   cell(1) = CLng(as1(0)) 
+   cell(2) = CLng(as1(1)) 
+   GetFocusedCell3 = cell()
+End Function 
+
+&apos;__________________________________________________________________________________________
+Function cursorComValor (txtCur As Variant) As Variant
+&apos;@ objetivo: obter um objeto cursor, contendo o valor numérico
+&apos;@ parâmetros:
+&apos;@@@ txtCur: posição do cursor no texto
+&apos;@ usa rotina: caractereValido
+&apos;@ retorna o objeto cursor, abrangendo o valor numérico
+&apos;@ 
+&apos;@ nova, dribla defeito da api
+&apos;
+   &apos; Declara variáveis locais
+   Dim txtFim As Variant
+   Dim sCarac As String
+   Dim bCharVal As Boolean
+   &apos;
+   If txtCur.IsEndOfParagraph() Then
+
+      &apos; *** DRIBLA, um defeito da API (listas numeradas)
+      If txtCur.isStartOfParagraph() AND txtCur.isEndOfParagraph()  Then
+         cursorComValor = txtCur
+         Exit Function
+      End If
+      &apos; *** ---------
+      Do 
+         txtCur.goLeft(1, True)
+         sCarac = txtCur.getString()
+         bCharVal =  ( sCarac = &quot; &quot; OR sCarac = CHR(9) ) AND Not txtCur.isStartOfParagraph()
+         txtCur.collapseToStart()
+         &apos;print &quot;Do 1: &quot; &amp; sCarac &amp; &quot; - &quot; &amp; bCharVal
+      Loop While (Not txtCur.isStartOfParagraph() AND bCharVal)
+      &apos;
+      If (Not bCharVal) Then
+         txtCur.goRight(1, True)
+         txtCur.collapseToEnd()
+         &apos;print &quot;If 1: &quot; &amp; bCharVal
+      End If
+   Else
+      &apos; *** DRIBLA, um defeito da API (listas numeradas)
+      If txtCur.NumberingStyleName &lt;&gt; &quot;&quot; AND _
+         txtCur.isStartOfParagraph() AND _
+         Not txtCur.isEndOfParagraph()  Then
+         txtCur.goRight(1, True)
+         sCarac = txtCur.getString()
+         If Len(sCarac) &gt; 1 Then
+            txtCur.collapseToEnd()
+         End If
+      End If
+      &apos; *** ---------
+      Do 
+         txtCur.goRight(1, True)
+         bCharVal = caractereValido(txtCur.getString())
+         &apos;print &quot;Do 2: &quot; &amp; txtCur.getString()
+         txtCur.collapseToEnd()
+      Loop While (Not txtCur.isEndOfParagraph() AND bCharVal)
+
+      If (Not bCharVal) Then
+         txtCur.goLeft(1, true)
+         txtCur.collapseToStart()
+         &apos;print &quot;If 2: &quot; &amp; bCharVal
+      End If
+   End If
+   &apos;
+   &apos; remover &lt;sep&gt; finais
+   txtCur.goLeft(1, True)
+   sCarac = txtCur.getString()
+   If sCarac = SEP_ORD OR sCarac = SEP_DEC Then
+      txtCur.collapseToStart()
+   Else
+      txtCur.collapseToEnd()
+   End If
+   &apos; guardar posicao final
+   txtFim = txtCur.getEnd()
+   &apos;
+   Do
+      txtCur.goLeft(1, True)
+      sCarac = txtCur.getString()
+      bCharVal = caractereValido(sCarac)
+      txtCur.collapseToStart()
+      &apos;print &quot;Do 3: &quot; &amp; sCarac &amp; &quot; &quot; &amp; STR(LEN(sCarac))
+   Loop While (Not txtCur.isStartOfParagraph() AND bCharVal)
+   &apos;
+   If (Not bCharVal) Then
+      &apos; teste evita bug: no inicio de uma lista numerada
+      If Len(sCarac) = 1 Then
+         &apos;print &quot;If 3: &quot; &amp; Str(Len(sCarac))
+         txtCur.goRight(1, True)
+         txtCur.collapseToEnd()
+      End If
+   End If
+   &apos;
+   &apos; remover &lt;sep&gt; iniciais
+   txtCur.goRight(1,True)
+   sCarac = txtCur.getString()
+   If sCarac = SEP_ORD OR sCarac = SEP_DEC Then
+      txtCur.collapseToEnd()
+   Else
+      txtCur.collapseToStart()
+   End If
+   &apos;
+   txtCur.gotoRange(txtFim, True)
+   cursorComValor = txtCur
+End Function
+&apos;
+&apos;__________________________________________________________________________________________
+Sub exibeErro (nrErro As Integer)
+   Dim msgErro(5) As String
+   &apos;
+   msgErro(0) = &quot;&quot;
+   msgErro(1) = &quot;Sem um valor numérico!&quot;
+   msgErro(2) = &quot;Mais de um separador decimal no valor!&quot;
+   msgErro(3) = &quot;Separador de ordem na frente do decimal!&quot;
+   msgErro(4) = &quot;Caractere inválido no valor!&quot;
+   msgErro(5) = &quot;Valor fora do limite (quatrilhões)&quot;
+   
+   msgBox msgErro(nrErro), 176, &quot;Valor Extenso: Erro&quot;
+End Sub
+
+&apos;__________________________________________________________________________________________
+Function verificaValor ( txtValor As String ) As Integer
+&apos;@
+&apos;@ objetivo: validacao basica do valor
+&apos;@ parametros:
+&apos;@@@ txtValor: valor a ser verificado / ajustado
+&apos;@
+   Dim nrErro As Integer
+   
+   nrErro = 0
+   &apos; exclui sep iniciais
+   If (Left(txtValor,1) = SEP_DEC Or Left(txtValor,1) = SEP_ORD) Then
+      txtValor = Right(txtValor, Len(txtValor) - 1)
+   End If
+   &apos; 1: tem valor ?
+   If Len(Trim(txtValor)) = 0 Then
+      verificaValor = 1
+      Exit Function
+   End If
+   &apos; 
+   &apos; 2: separador decimal ?
+   Dim vVirgulas As Variant
+   vVirgulas = Split(txtValor, SEP_DEC)
+   If UBound(vVirgulas()) &gt; 1 Then
+      verificaValor = 2
+      Exit Function
+   End If
+   &apos; 
+   &apos; 3: separador de ordem na frente do decimal ?
+   Dim nPto As Integer, nVir As Integer, i As Integer
+   nPto = 0
+   nVir = 0
+   For i=Len(txtValor) To 1 Step -1
+      If Mid(txtValor, i, 1) = SEP_ORD Then
+         nPto = i
+         Exit For
+      End If
+   Next
+   For i=Len(txtValor) To 1 Step -1
+      If Mid(txtValor, i, 1) = SEP_DEC Then
+         nVir = i
+         Exit For
+      End If
+   Next
+   &apos; 
+   If (nPto &gt; nVir AND nVir &gt; 0) Then
+      verificaValor = 3
+      Exit Function
+   End If
+   &apos;
+   &apos; 4: algum caractere inválido ?
+   For i = 1 To Len(txtValor)
+      If caractereValido(Mid(txtValor, i, 1)) = False Then
+         verificaValor = 4
+         Exit Function
+      End If
+   Next
+   &apos;
+   &apos; valor ok, ajusta para ver limite
+   Dim parteInt As String, parteDec As String
+   parteInt = vVirgulas(0)
+   parteDec = &quot;00&quot;
+   If UBound(vVirgulas()) = 1 Then
+      parteDec = vVirgulas(1)
+      parteDec = padDir(parteDec, &quot;0&quot;, 2)
+   End If
+   parteInt = eliminaPontos (parteInt)
+   &apos;
+   &apos; 5: valor fora do limite ?
+   If Len(parteInt) &gt; TAM_MAX Then
+      verificaValor = 5
+      Exit Function
+   End If
+   &apos; ajusta o valor final e sai
+   txtValor = parteInt &amp; SEP_DEC &amp; parteDec
+   verificaValor = nrErro
+   &apos;
+End Function
+
+&apos; ============= FIM DO MÓDULO =============
+
+</script:module>

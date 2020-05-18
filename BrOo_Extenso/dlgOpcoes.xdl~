@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE dlg:window PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "dialog.dtd">
+<dlg:window xmlns:dlg="http://openoffice.org/2000/dialog" xmlns:script="http://openoffice.org/2000/script" dlg:id="dlgOpcoes" dlg:left="135" dlg:top="64" dlg:width="150" dlg:height="80" dlg:closeable="true" dlg:moveable="true" dlg:title="Inserir número por extenso">
+ <dlg:bulletinboard>
+  <dlg:text dlg:id="Label1" dlg:tab-index="0" dlg:left="3" dlg:top="4" dlg:width="17" dlg:height="10" dlg:value="Valor"/>
+  <dlg:fixedline dlg:id="FixedLine1" dlg:tab-index="5" dlg:left="3" dlg:top="38" dlg:width="75" dlg:height="10" dlg:value="Opções"/>
+  <dlg:checkbox dlg:id="chkMoeda" dlg:tab-index="4" dlg:left="5" dlg:top="52" dlg:width="73" dlg:height="10" dlg:value="Moeda" dlg:checked="false"/>
+  <dlg:checkbox dlg:id="chkIncluirValor" dlg:tab-index="6" dlg:left="5" dlg:top="66" dlg:width="73" dlg:height="10" dlg:value="Incluir valor" dlg:checked="false"/>
+  <dlg:button dlg:id="btnOK" dlg:tab-index="2" dlg:left="87" dlg:top="9" dlg:width="59" dlg:height="14" dlg:default="true" dlg:value="OK">
+   <script:event script:event-name="on-performaction" script:macro-name="vnd.sun.star.script:BrOo_Extenso.ValorExtenso.dlgBtnOK?language=Basic&amp;location=application" script:language="Script"/>
+  </dlg:button>
+  <dlg:button dlg:id="btnCancela" dlg:tab-index="3" dlg:left="87" dlg:top="28" dlg:width="59" dlg:height="14" dlg:value="Cancelar">
+   <script:event script:event-name="on-performaction" script:macro-name="vnd.sun.star.script:BrOo_Extenso.ValorExtenso.dlgBtnCancelar?language=Basic&amp;location=application" script:language="Script"/>
+  </dlg:button>
+  <dlg:textfield dlg:id="tbValor" dlg:tab-index="1" dlg:left="3" dlg:top="14" dlg:width="75" dlg:height="12"/>
+ </dlg:bulletinboard>
+</dlg:window>
